@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Sort - AI Waste Classifier</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="heading">Smart Sort: AI Waste Classifier</h1>
+        <p class="text">Use your camera to classify waste into Dry, Wet, or Other.</p>
+        <video class= "cam" id="video" autoplay playsinline></video>
+        <button id="captureButton" class="btn">Classify Waste</button>
+        <canvas id="canvas" style="display: none;"></canvas>
+        <div id="result" class="result_"></div>
+        <p id="errorMessage" style="color: red;"></p>
+    </div>
+    
+    <script>
+        async function requestCameraAccess() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+            } catch (error) {
+                console.error('Camera access denied:', error);
+                document.getElementById("errorMessage").innerText = "Camera access is denied. Please enable it in your browser settings and refresh the page.";
+                alert("Camera access is required. Please check your browser or OS permissions.");
+            }
+        }
+        
+        document.addEventListener("DOMContentLoaded", requestCameraAccess);
+        
+        document.getElementById("captureButton").addEventListener("click", function() {
+            const video = document.getElementById("video");
+            if (!video.srcObject) {
+                alert("Camera not available. Click OK to retry.");
+                requestCameraAccess();
+                return;
+            }
+            
+            const canvas = document.getElementById("canvas");
+            const context = canvas.getContext("2d");
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(blob => {
+                if (!blob) {
+                    alert("Error capturing image. Please try again.");
+                    return;
+                }
+                
+                const formData = new FormData();
+                formData.append("file", blob, "snapshot.jpg");
+                
+                fetch("http://127.0.0.1:5000/classify", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById("result").innerHTML = `<h2 style="color: rgb(113,14,14);">${data.error}</h2>`;
+                    } else {
+                        document.getElementById("result").innerHTML = `<h2>Category: ${data.category} (Confidence: ${(data.confidence * 100).toFixed(2)}%)</h2>`;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                    alert("Error classifying waste. Please try again later.");
+                });
+
+            }, "image/jpeg");
+        });
+    </script>
+</body>
+</html>
