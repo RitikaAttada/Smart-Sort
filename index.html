@@ -55,7 +55,7 @@
                 const formData = new FormData();
                 formData.append("file", blob, "snapshot.jpg");
                 
-                fetch("http://127.0.0.1:5000/classify", {
+                fetch("https://smart-sort-3aro.onrender.com/classify", {
                     method: "POST",
                     body: formData
                 })
